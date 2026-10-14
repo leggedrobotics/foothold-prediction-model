@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fpm"
+version = "1.0.0"
+description = "Foothold Prediction Model for perceptive humanoid locomotion in Isaac Lab"
+requires-python = ">=3.10"
+dependencies = ["rsl-rl-lib==3.3.0"]
+
+[tool.setuptools.packages.find]
+include = ["fpm*"]
+
+[tool.setuptools.package-data]
+fpm = ["assets/data/G1/*.usd", "assets/data/G1/configuration/*.usd"]
