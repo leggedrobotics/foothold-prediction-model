@@ -7,7 +7,7 @@ from isaaclab.app import AppLauncher
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--task", type=str, default="FPM-G1-Play-v0")
-parser.add_argument("--checkpoint", type=str, required=True)
+parser.add_argument("--checkpoint", type=str, default=None, help="Defaults to the latest run in logs/, else the demo policy.")
 parser.add_argument("--num_envs", type=int, default=None)
 parser.add_argument("--video", action="store_true")
 parser.add_argument("--video_length", type=int, default=500)
@@ -21,7 +21,9 @@ if args_cli.video:
 sys.argv = [sys.argv[0]] + hydra_args
 simulation_app = AppLauncher(args_cli).app
 
+import glob
 import os
+import re
 import time
 
 import gymnasium as gym
@@ -48,7 +50,7 @@ def export(runner: OnPolicyRunner, export_dir: str, example_state: torch.Tensor)
     foot_model = torch.jit.load(current_foot_model_path(), map_location="cpu").eval()
     torch.onnx.export(
         foot_model,
-        example_state[:1].cpu(),
+        example_state[:1].unsqueeze(1).cpu(),
         os.path.join(export_dir, "foot_model.onnx"),
         export_params=True,
         opset_version=11,
@@ -73,9 +75,29 @@ def foothold_positions_w(env, policy_obs: torch.Tensor, patch_size: int = 7) -> 
     return torch.cat(points, dim=0)
 
 
+DEMO_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "demo")
+
+
+def latest_checkpoint(run_dir: str) -> str | None:
+    found = [(int(m.group(1)), f) for f in os.listdir(run_dir) if (m := re.match(r"^model_(\d+)\.pt$", f))]
+    return os.path.join(run_dir, max(found)[1]) if found else None
+
+
+def resolve_checkpoint(experiment_name: str) -> str:
+    if args_cli.checkpoint:
+        return args_cli.checkpoint
+    runs = sorted(glob.glob(os.path.join("logs", "rsl_rl", experiment_name, "*")), reverse=True)
+    for run in runs:
+        checkpoint = latest_checkpoint(run)
+        if checkpoint:
+            return checkpoint
+    return latest_checkpoint(DEMO_DIR)
+
+
 @hydra_task_config(args_cli.task, "rsl_rl_cfg_entry_point")
 def main(env_cfg, agent_cfg):
-    run_dir = os.path.dirname(os.path.abspath(args_cli.checkpoint))
+    checkpoint = resolve_checkpoint(agent_cfg.experiment_name)
+    run_dir = os.path.dirname(os.path.abspath(checkpoint))
     env_cfg.log_dir = run_dir
     env_cfg.load_run_dir = run_dir
     if args_cli.num_envs is not None:
@@ -85,7 +107,7 @@ def main(env_cfg, agent_cfg):
         agent_cfg.device = args_cli.device
     if not args_cli.joystick:
         env_cfg.commands.base_velocity.resampling_time_range = (10.0, 10.0)
-    print(f"[INFO] policy {args_cli.checkpoint}\n[INFO] FPM {latest_foot_model(run_dir)}")
+    print(f"[INFO] policy {checkpoint}\n[INFO] FPM {latest_foot_model(run_dir)}")
 
     env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
     if args_cli.video:
@@ -98,7 +120,7 @@ def main(env_cfg, agent_cfg):
         )
     env = FiniteRslRlVecEnvWrapper(env, clip_actions=agent_cfg.clip_actions)
     runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
-    runner.load(args_cli.checkpoint)
+    runner.load(checkpoint)
     policy = runner.get_inference_policy(device=env.unwrapped.device)
 
     u = env.unwrapped

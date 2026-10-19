@@ -180,6 +180,9 @@ class RewardsCfg:
             )
         },
     )
+    upright_posture = RewTerm(
+        func=mdp.upright_posture, weight=0.25, params={"asset_cfg": FEET, "target_height": 0.72, "std": 0.06}
+    )
     termination_penalty = RewTerm(func=mdp.is_terminated, weight=-20.0)
 
 

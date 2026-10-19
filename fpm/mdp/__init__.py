@@ -12,6 +12,6 @@ from .observations import (
     current_foot_model_path,
     foothold_scan,
 )
-from .rewards import action_rate_l2_bounded, stand_still_nominal_pose
+from .rewards import action_rate_l2_bounded, stand_still_nominal_pose, upright_posture
 from .symmetry import g1_symmetry_augmentation, mirror_joints
 from .terminations import displacement_from_origin, nan_physics_state

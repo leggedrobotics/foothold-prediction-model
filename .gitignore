@@ -3,3 +3,5 @@ __pycache__/
 logs/
 outputs/
 wandb/
+demo/videos/
+demo/exported/

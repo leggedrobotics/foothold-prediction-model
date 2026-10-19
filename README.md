@@ -28,6 +28,7 @@ scripts/
   validate_locomotion.py
   validate_corridor.py
   validate_foot_pred.py
+demo/           pretrained policy and FPM
 ```
 
 ## Training
@@ -44,12 +45,13 @@ checkpoints as `foot_model_<iteration>.pt` (TorchScript, input normalization inc
 ## Playback and export
 
 ```bash
-python scripts/play.py --checkpoint logs/rsl_rl/g1_fpm/<run>/model_40000.pt --show_footholds
+python scripts/play.py --show_footholds
 ```
 
-Writes `policy.pt`, `policy.onnx` and `foot_model.onnx` to `<run>/exported/`. The FPM takes the 70-dimensional
-system state and returns two planar footholds in the base frame. Use `--joystick` for gamepad control and `--video`
-to record a clip.
+Without `--checkpoint`, the latest checkpoint in `logs/rsl_rl/g1_fpm/` is played, or the pretrained policy in `demo/`
+if there are no logs. Writes `policy.pt`, `policy.onnx` and `foot_model.onnx` to `exported/` next to the
+checkpoint. The FPM takes the 70-dimensional system state and returns two planar footholds in the base frame. Use
+`--joystick` for gamepad control and `--video` to record a clip.
 
 ## Evaluation
 
